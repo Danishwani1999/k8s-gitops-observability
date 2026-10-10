@@ -10,6 +10,11 @@
 
 A production-grade **DevSecOps policy enforcement, GitOps synchronization, and observability pipeline** for Kubernetes. This project demonstrates automated security scanning, admission control webhook enforcement, continuous delivery, and real-time telemetry tracking.
 
+
+---
+
+## 🗺️ Project Architecture
+
 ---
 
 ## 🏗️ Architecture & Toolchain

@@ -32,6 +32,9 @@ k8s-policy-engine/
 ├── scripts/               # Automation scripts (Trivy scan + admission testing)
 ├── tests/                 # Validation test workloads (pass/fail manifests)
 └── README.md
+```
+
+---
 
 ## 🚀 Automated Validation & Testing
 
@@ -68,6 +71,7 @@ pod/secure-workload created
 pod "secure-workload" deleted from default namespace
 
 All Trivy scans and policy checks passed!
+```
 
 ---
 
@@ -79,20 +83,20 @@ All Trivy scans and policy checks passed!
 
 ### 1. Deploy Kyverno via Helm
 ```bash
-helm repo add kyverno [https://kyverno.github.io/kyverno](https://kyverno.github.io/kyverno)
+helm repo add kyverno https://kyverno.github.io/kyverno
 helm repo update
-helm upgrade --install kyverno kyverno/kyverno \
-  --namespace kyverno \
-  --create-namespace \
-  -f charts/kyverno-values.yaml
+helm upgrade --install kyverno kyverno/kyverno   --namespace kyverno   --create-namespace   -f charts/kyverno-values.yaml
+```
 
 ### 2. Apply Security Policies
 ```bash
 kubectl apply -f policies/disallow-root-user.yaml
+```
 
 ### 3. Run the Automated Scan & Test Script
 ```bash
 ./scripts/scan-and-test.sh
+```
 
 ---
 

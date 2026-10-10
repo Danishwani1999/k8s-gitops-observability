@@ -140,6 +140,8 @@ admission_webhook_requests_total{controller="kyverno", policy="disallow-root-use
 
 ---
 
+---
+
 ## 🛠️ Quick Start & One-Go Execution
 
 ### Master One-Go Automation Script (`./scripts/run-all.sh`)
@@ -181,10 +183,3 @@ To run it directly:
 chmod +x scripts/run-all.sh
 ./scripts/run-all.sh
 ```
-
----
-
-## 👤 Author
-**Danish Wani**  
-*Fresher DevOps & Cloud Engineer*  
-[GitHub Profile](https://github.com/Danishwani1999)

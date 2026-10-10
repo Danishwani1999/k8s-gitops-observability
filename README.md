@@ -1,4 +1,4 @@
-# Kubernetes DevSecOps Policy, GitOps & Observability Engine 🛡️📊
+# Kubernetes GitOps & Observability Lab 🛡️📊
 
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.35+-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Kyverno](https://img.shields.io/badge/Kyverno-Admission%20Control-orange?logo=kyverno&logoColor=white)](https://kyverno.io/)
@@ -120,39 +120,44 @@ admission_webhook_requests_total{controller="kyverno", policy="disallow-root-use
 
 ## 🛠️ Quick Start & One-Go Execution
 
-### Run the Entire Project in One Go
-To provision the cluster, deploy Argo CD, Prometheus, Grafana, Kyverno, and execute tests automatically, run the master script:
-```bash
-./scripts/run-all.sh
-```
+### Master One-Go Automation Script (`./scripts/run-all.sh`)
+To provision the cluster, set up Argo CD, deploy Prometheus and Grafana monitoring, install Kyverno, apply security policies, and run verification tests automatically in a single command, use the master script below:
 
-### Manual Step-by-Step Execution
-
-#### 1. Spin up Minikube & Deploy Argo CD
 ```bash
-minikube start --driver=docker
+set -e
+
+echo "🚀 [1/6] Checking / Starting Minikube Cluster..."
+minikube status || minikube start --driver=docker
+
+echo "🐙 [2/6] Setting up Argo CD (GitOps Controller)..."
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-```
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml --wait=false
 
-#### 2. Deploy Prometheus & Grafana Monitoring
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-helm upgrade --install monitoring prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
-```
+echo "📊 [3/6] Deploying Prometheus & Grafana (Telemetry & Monitoring)..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update >/dev/null 2>&1
+helm repo update >/dev/null 2>&1
+helm upgrade --install monitoring prometheus-community/kube-prometheus-stack   --namespace monitoring   --create-namespace   --set grafana.enabled=true   --set prometheus.enabled=true --wait=false
 
-#### 3. Deploy Kyverno & Apply Policies
-```bash
-helm repo add kyverno https://kyverno.github.io/kyverno
-helm repo update
-helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace -f charts/kyverno-values.yaml
+echo "🛡️ [4/6] Deploying Kyverno Policy Engine via Helm..."
+helm repo add kyverno https://kyverno.github.io/kyverno --force-update >/dev/null 2>&1
+helm repo update >/dev/null 2>&1
+helm upgrade --install kyverno kyverno/kyverno   --namespace kyverno   --create-namespace   -f charts/kyverno-values.yaml
+
+echo "⏳ Waiting for Kyverno admission controller webhook to be active..."
+kubectl rollout status deployment kyverno-admission-controller -n kyverno --timeout=120s
+
+echo "🔒 [5/6] Applying Security Policies..."
 kubectl apply -f policies/disallow-root-user.yaml
+
+echo "🧪 [6/6] Executing End-to-End Trivy Scans & Admission Tests..."
+./scripts/scan-and-test.sh
+
 ```
 
-#### 4. Run Validation Suite
+To run it directly:
 ```bash
-./scripts/scan-and-test.sh
+chmod +x scripts/run-all.sh
+./scripts/run-all.sh
 ```
 
 ---

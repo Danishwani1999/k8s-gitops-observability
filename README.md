@@ -1,176 +1,102 @@
-# Kubernetes Policy Engine (`k8s-policy-engine`)
+# Kubernetes DevSecOps Policy Engine 🛡️
 
-[![Kubernetes](https://img.shields.io/badge/kubernetes-v1.28+-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
-[![Kyverno](https://img.shields.io/badge/kyverno-v1.19.1-009688?logo=kyverno&logoColor=white)](https://kyverno.io/)
-[![Helm](https://img.shields.io/badge/helm-v3-0F1689?logo=helm&logoColor=white)](https://helm.sh/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.35+-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![Kyverno](https://img.shields.io/badge/Kyverno-Admission%20Control-orange?logo=kyverno&logoColor=white)](https://kyverno.io/)
+[![Trivy](https://img.shields.io/badge/Trivy-Config%20Scanning-brightgreen?logo=aquasecurity&logoColor=white)](https://aquasecurity.github.io/trivy/)
+[![Argo CD](https://img.shields.io/badge/Argo%20CD-GitOps-red?logo=argo&logoColor=white)](https://argoproj.github.io/argo-cd/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A lightweight, production-grade policy enforcement engine on Kubernetes using **Kyverno** admission controls deployed via **Helm**. This project demonstrates dynamic policy-based security gating by intercepting API admission requests and blocking non-compliant container specs (such as privileged root executions) before they reach the cluster datastore.
-
----
-
-## 📌 Executive Summary
-
-Modern Kubernetes security requires shifting control plane policy enforcement left. Rather than reacting to runtime vulnerabilities, `k8s-policy-engine` enforces admission-time governance using fine-grained policy rules. 
-
-### Key Outcomes
-- **Zero-Trust Guardrails**: Enforced strict `runAsNonRoot` policies cluster-wide.
-- **Resource-Optimized Control Plane**: Custom Helm configuration stripping unused controllers to fit edge/local development environments without sacrificing security capabilities.
-- **Automated Rejection**: Blocked root workload attempts at the API level with actionable violation errors.
+A production-grade **DevSecOps policy enforcement and validation pipeline** for Kubernetes. This project demonstrates automated security configuration scanning, admission control webhook policy enforcement via Kyverno, and GitOps-driven cluster management.
 
 ---
 
-## 🏛️ Architecture & Control Flow
+## 🏗️ Architecture & Toolchain
 
-text
-[ User / CI/CD Pipeline ]
-|
-kubectl apply / run
-|
-v
-+-------------------------------+
-|   Kubernetes API Server       |
-+-------------------------------+
-|
-Mutating / Validating
-Admission Webhook
-|
-v
-+-------------------------------+
-|   Kyverno Admission Engine    |
-|  (kyverno-admission-ctrl)     |
-+-------------------------------+
-|
-+-------------------+-------------------+
-|                                       |
-[ Policy Rule Matched ]                 [ Policy Rule Violation ]
-spec.securityContext.runAsNonRoot           spec.securityContext.runAsNonRoot
-== true                                     != true
-|                                       |
-v                                       v
-+-----------------+                     +-----------------+
-|  200 OK Allowed |                     |  403 Forbidden  |
-| (Persisted etcd)|                     | (Request Denied)|
-+-----------------+                     +-----------------+
-|                                       |
-v                                       v
-Pod Scheduled                           Deployment Blocked
-
+| Tool | Purpose |
+| :--- | :--- |
+| **Kyverno** | Kubernetes native admission control policy engine (enforces security baselines). |
+| **Trivy** | Static code analysis and vulnerability scanner for Kubernetes manifests and policies. |
+| **Argo CD** | Continuous delivery and GitOps tool for synchronizing cluster state from Git. |
+| **Helm** | Package manager for deploying and managing chart dependencies (Kyverno). |
+| **Minikube / Docker** | Local container orchestration environment running on Ubuntu WSL. |
 
 ---
 
-## ⚙️ Implementation & Deployment Steps
+## 📂 Repository Structure
 
-### 1. Minimal-Footprint Helm Deployment
+```text
+k8s-policy-engine/
+├── argocd/                # Argo CD application manifests for GitOps sync
+├── charts/                # Helm value overrides and custom chart configurations
+├── policies/              # Kyverno ClusterPolicy definitions (e.g., root user restrictions)
+├── scripts/               # Automation scripts (Trivy scan + admission testing)
+├── tests/                 # Validation test workloads (pass/fail manifests)
+└── README.md
 
-bash
+## 🚀 Automated Validation & Testing
 
-Add official Kyverno Helm repository
-helm repo add kyverno https://kyverno.github.io/kyverno/
+This project includes an end-to-end automation script (`./scripts/scan-and-test.sh`) that validates security posture in two phases:
+1. **Static Analysis:** Runs **Trivy** against all local policy definitions to check for misconfigurations.
+2. **Dynamic Admission Control:** Tests cluster webhook enforcement by attempting to deploy insecure workloads (`fail-root-pod.yaml`) and compliant workloads (`pass-non-root-pod.yaml`).
+
+### Execution Output
+
+Running the test script produces the following verified validation report:
+
+```text
+=== Running Trivy security scan on policies ===
+2026-10-10T09:03:12Z    INFO    [misconfig] Misconfiguration scanning is enabled
+2026-10-10T09:03:12Z    INFO    [checks-client] Using existing checks from cache        path="/home/danish/.cache/trivy/policy/content"
+2026-10-10T09:03:20Z    INFO    Detected config files    num=1
+
+Report Summary
+┌─────────────────────────┬────────────┬───────────────────┐
+│         Target          │    Type    │ Misconfigurations │
+├─────────────────────────┼────────────┼───────────────────┤
+│ disallow-root-user.yaml │ kubernetes │         0         │
+└─────────────────────────┴────────────┴───────────────────┘
+
+=== Testing root pod restriction (Expect block) ===
+Error from server: error when creating "tests/fail-root-pod.yaml": admission webhook "validate.kyverno.svc-fail" denied the request:
+  resource Pod/default/insecure-root-workload was blocked due to the following policies
+  disallow-root-user:
+    check-runAsNonRoot: 'validation error: Running as root is not allowed. Set securityContext.runAsNonRoot to true. rule check-runAsNonRoot failed at path /spec/securityContext/runAsNonRoot/'
+SUCCESS: Kyverno correctly blocked the root pod.
+
+=== Testing secure pod deployment (Expect success) ===
+pod/secure-workload created
+pod "secure-workload" deleted from default namespace
+
+All Trivy scans and policy checks passed!
+
+---
+
+## 🛠️ Quick Start & Usage
+
+### Prerequisites
+* Minikube & Docker (running on Ubuntu WSL)
+* `kubectl` and `helm` installed
+
+### 1. Deploy Kyverno via Helm
+```bash
+helm repo add kyverno [https://kyverno.github.io/kyverno](https://kyverno.github.io/kyverno)
 helm repo update
+helm upgrade --install kyverno kyverno/kyverno \
+  --namespace kyverno \
+  --create-namespace \
+  -f charts/kyverno-values.yaml
 
-Install admission controller with lightweight values
-helm install kyverno kyverno/kyverno -n kyverno --create-namespace 
-
---set global.backgroundController.enabled=false 
-
---set global.cleanupController.enabled=false 
-
---set global.reportsController.enabled=false
-
-
-### 2. Root Restriction Policy (`policies/disallow-root-user.yaml`)
-
-yaml
-apiVersion: kyverno.io/v1
-kind: ClusterPolicy
-metadata:
-name: disallow-root-user
-annotations:
-policies.kyverno.io/title: Disallow Root User
-policies.kyverno.io/severity: high
-spec:
-validationFailureAction: Enforce
-background: false
-rules:
-- name: check-runAsNonRoot
-match:
-any:
-- resources:
-kinds:
-- Pod
-validate:
-message: "Running as root is not allowed. Set securityContext.runAsNonRoot to true."
-pattern:
-spec:
-securityContext:
-runAsNonRoot: true
-
-
-Apply the policy:
-
-bash
+### 2. Apply Security Policies
+```bash
 kubectl apply -f policies/disallow-root-user.yaml
 
+### 3. Run the Automated Scan & Test Script
+```bash
+./scripts/scan-and-test.sh
 
 ---
 
-## 🧪 Verification & Proof of Enforcement
-
-### Test 1: Non-Compliant Root Pod Attempt (**EXPECTED: BLOCKED**)
-
-bash
-kubectl run test-root --image=nginx
-
-
-**Actual Terminal Output**:
-text
-Error from server: admission webhook "validate.kyverno.svc-fail" denied the request:
-
-resource Pod/default/test-root was blocked due to the following policies
-
-disallow-root-user:
-check-runAsNonRoot: 'validation error: Running as root is not allowed. Set securityContext.runAsNonRoot to true. rule check-runAsNonRoot failed at path /spec/securityContext/runAsNonRoot/'
-
-
----
-
-### Test 2: Compliant Non-Root Pod Attempt (**EXPECTED: ALLOWED**)
-
-bash
-kubectl run test-nonroot --image=nginx --overrides='{
-"spec": {
-"securityContext": {
-"runAsNonRoot": true,
-"runAsUser": 10001
-}
-}
-}'
-
-
-**Actual Terminal Output**:
-text
-pod/test-nonroot created
-
-
----
-
-## 📁 Repository Structure
-
-text
-k8s-policy-engine/
-├── README.md
-├── charts/
-│   └── kyverno-values.yaml      # Exported Helm deployment values
-└── policies/
-└── disallow-root-user.yaml  # Kyverno ClusterPolicy enforcement manifest
-
-
----
-
-## 🧹 Cleanup
-
-bash
-kubectl delete pod test-nonroot --ignore-not-found
-kubectl delete -f policies/disallow-root-user.yaml
-helm uninstall kyverno -n kyverno
-
+## 👤 Author
+**Danish Wani**  
+*Fresher DevOps & Cloud Engineer*  
+[GitHub Profile](https://github.com/Danishwani1999)

@@ -183,3 +183,9 @@ To run it directly:
 chmod +x scripts/run-all.sh
 ./scripts/run-all.sh
 ```
+---
+
+## 👤 Author
+**Danish Wani**  
+*Fresher DevOps & Cloud Engineer*  
+[GitHub Profile](https://github.com/Danishwani1999)

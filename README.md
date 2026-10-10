@@ -13,9 +13,26 @@ A production-grade **DevSecOps policy enforcement, GitOps synchronization, and o
 
 ---
 
+---
+
 ## 🗺️ Project Architecture
 
----
+```mermaid
+graph TD
+    Developer[Developer / WSL] -->|Git Push| GitHub[GitHub Repository]
+    GitHub -->|Continuous Sync| ArgoCD[Argo CD GitOps]
+    ArgoCD -->|Deploy Manifests| K8s[Minikube Kubernetes Cluster]
+    
+    subgraph Security Layer
+        Trivy[Trivy Static Scan] -->|Validates| Policies[Kyverno ClusterPolicy]
+        Policies -->|Admission Webhook Control| K8s
+    end
+
+    subgraph Observability Stack
+        K8s -->|Scrape Telemetry Metrics| Prometheus[Prometheus]
+        Prometheus -->|Visualize Dashboards| Grafana[Grafana]
+    end
+```
 
 ## 🏗️ Architecture & Toolchain
 

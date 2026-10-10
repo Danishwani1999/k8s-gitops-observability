@@ -28,7 +28,7 @@ A production-grade **DevSecOps policy enforcement, GitOps synchronization, and o
 ## 📂 Repository Structure
 
 ```text
-k8s-policy-engine/
+k8s-gitops-observability/
 ├── argocd/
 │   └── application.yaml         # Argo CD manifest to track this repository
 ├── charts/
@@ -86,10 +86,10 @@ All Trivy scans and policy checks passed!
 
 ### 1. Argo CD (GitOps Synchronization Status)
 ```text
-Name:               k8s-policy-engine
+Name:               k8s-gitops-observability
 Namespace:          argocd
 Project:            default
-Source Repo:        https://github.com/Danishwani1999/k8s-policy-engine.git
+Source Repo:        https://github.com/Danishwani1999/k8s-gitops-observability.git
 Sync Status:        Synced (To HEAD)
 Health Status:      Healthy
 ```

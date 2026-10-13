@@ -1,0 +1,42 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: extra-policies
+policies:
+  - ../../policies/disallow-latest-tag.yaml
+  - ../../policies/require-resource-limits.yaml
+  - ../../policies/disallow-privileged-containers.yaml
+resources:
+  - good-pod.yaml
+  - bad-pod.yaml
+results:
+  - policy: disallow-latest-tag
+    rule: validate-image-tag
+    kind: Pod
+    resources: [good-pod]
+    result: pass
+  - policy: disallow-latest-tag
+    rule: validate-image-tag
+    kind: Pod
+    resources: [bad-pod]
+    result: fail
+  - policy: require-resource-limits
+    rule: validate-resources
+    kind: Pod
+    resources: [good-pod]
+    result: pass
+  - policy: require-resource-limits
+    rule: validate-resources
+    kind: Pod
+    resources: [bad-pod]
+    result: fail
+  - policy: disallow-privileged-containers
+    rule: privileged-containers
+    kind: Pod
+    resources: [good-pod]
+    result: pass
+  - policy: disallow-privileged-containers
+    rule: privileged-containers
+    kind: Pod
+    resources: [bad-pod]
+    result: fail

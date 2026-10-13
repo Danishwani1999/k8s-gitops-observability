@@ -40,3 +40,6 @@ jobs:
 
       - name: Run Kyverno policy tests
         run: kyverno test tests/kyverno-test
+
+      - name: Run extra policy tests
+        run: kyverno test tests/policy-tests

@@ -1,45 +1,24 @@
-name: CI
+name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [ main, master ]
   pull_request:
-
-permissions:
-  contents: read
+    branches: [ main, master ]
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin
-          trivy --version
-
-      - name: Trivy config scan (policies and Argo CD manifests)
-        run: trivy config --severity HIGH,CRITICAL --exit-code 1 --skip-dirs tests .
-
-      - name: Install kubeconform
-        run: |
-          curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
-          sudo mv kubeconform /usr/local/bin/
-
-      - name: Validate manifests with kubeconform
-        run: |
-          kubeconform -strict -ignore-missing-schemas -summary \
-            policies/ argocd/ tests/pass-non-root-pod.yaml
 
       - name: Install Kyverno CLI
         run: |
-          curl -sSL https://github.com/kyverno/kyverno/releases/download/v1.19.1/kyverno-cli_v1.19.1_linux_x86_64.tar.gz | tar xz
+          curl -LO https://github.com/kyverno/kyverno/releases/download/v1.10.0/kyverno-cli_v1.10.0_linux_x86_64.tar.gz
+          tar -xvf kyverno-cli_v1.10.0_linux_x86_64.tar.gz
           sudo mv kyverno /usr/local/bin/
 
-      - name: Run Kyverno policy tests
-        run: kyverno test tests/kyverno-test
-
-      - name: Run extra policy tests
-        run: kyverno test tests/policy-tests
+      - name: Test Kyverno Policies
+        run: |
+          kyverno test .

@@ -1,16 +1,14 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: k8s-gitops-observability
+  name: k8s-policy-engine
   namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/Danishwani1999/k8s-gitops-observability.git'
+    repoURL: 'https://github.com/Danishwani1999/k8s-policy-engine.git'
     targetRevision: HEAD
-    path: manifests
+    path: policies
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: default
@@ -18,5 +16,3 @@ spec:
     automated:
       prune: true
       selfHeal: true
-    syncOptions:
-      - CreateNamespace=true

@@ -1,0 +1,30 @@
+name: GitOps & Policy CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-gitops:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Kyverno CLI
+        run: |
+          curl -LO https://github.com/kyverno/kyverno/releases/download/v1.11.4/kyverno-cli_v1.11.4_linux_x86_64.tar.gz
+          tar -zxvf kyverno-cli_v1.11.4_linux_x86_64.tar.gz
+          sudo mv kyverno /usr/local/bin/
+
+      - name: Run Kyverno Policy Tests
+        run: kyverno test ./policies/
+
+      - name: Run Trivy Manifest Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: './manifests'
+          format: 'table'
+          exit-code: '1'

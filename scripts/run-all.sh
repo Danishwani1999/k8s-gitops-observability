@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -e
+
+echo "🚀 [1/6] Checking / starting Minikube..."
+minikube status >/dev/null 2>&1 || minikube start --driver=docker --memory=6144 --cpus=4
+
+echo "🐙 [2/6] Installing Argo CD..."
+kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+echo "📊 [3/6] Installing Prometheus and Grafana..."
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update >/dev/null 2>&1
+helm repo update >/dev/null 2>&1
+helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace
+
+echo "🛡️ [4/6] Installing Kyverno..."
+helm repo add kyverno https://kyverno.github.io/kyverno --force-update >/dev/null 2>&1
+helm repo update >/dev/null 2>&1
+helm upgrade --install kyverno kyverno/kyverno \
+  --namespace kyverno --create-namespace -f charts/kyverno-values.yaml
+
+echo "⏳ Waiting for the Kyverno admission controller..."
+kubectl rollout status deployment kyverno-admission-controller -n kyverno --timeout=180s
+
+echo "🔄 [5/6] Connecting Argo CD to this repository (syncs policies/)..."
+kubectl apply -f argocd/application.yaml
+
+echo "🧪 [6/6] Running Trivy scan and admission tests..."
+./scripts/scan-and-test.sh

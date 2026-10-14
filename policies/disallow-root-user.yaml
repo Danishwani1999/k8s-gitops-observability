@@ -10,6 +10,7 @@ metadata:
       Blocks pods and containers that explicitly set runAsUser to 0 (root).
       Pods that set no user at all are not caught by this rule.
 spec:
+  failurePolicy: Ignore
   validationFailureAction: Enforce
   background: true
   rules:

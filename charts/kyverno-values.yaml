@@ -1,5 +1,18 @@
-# Lightweight Kyverno install for a single-node Minikube lab.
-# Only the admission controller runs; background scans, reports and cleanup are disabled to save memory.
+admissionController:
+  replicas: 1
+  container:
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {memory: 512Mi}
+  startupProbe:
+    failureThreshold: 30
+    periodSeconds: 10
+  livenessProbe:
+    failureThreshold: 10
+    timeoutSeconds: 10
+  readinessProbe:
+    failureThreshold: 6
+    timeoutSeconds: 10
 backgroundController:
   enabled: false
 cleanupController:

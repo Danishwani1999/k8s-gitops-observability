@@ -1,17 +1,22 @@
+# Lightweight Kyverno for a small single-node Minikube (about 3.5 GiB).
+# Only the admission controller runs; background, cleanup and reports are off.
 admissionController:
   replicas: 1
   container:
     resources:
       requests: {cpu: 100m, memory: 256Mi}
       limits: {memory: 512Mi}
+  # Looser probes: on a CPU-starved node the defaults kill the pod before it is ready.
   startupProbe:
     failureThreshold: 30
     periodSeconds: 10
+    timeoutSeconds: 5
   livenessProbe:
-    failureThreshold: 10
+    initialDelaySeconds: 30
+    failureThreshold: 5
     timeoutSeconds: 10
   readinessProbe:
-    failureThreshold: 6
+    failureThreshold: 10
     timeoutSeconds: 10
 backgroundController:
   enabled: false

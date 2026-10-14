@@ -1,6 +1,6 @@
 # Kubernetes GitOps & Observability Lab 🛡️📊
 
-[![CI](https://github.com/Danishwani1999/k8s-gitops-observability/actions/workflows/ci.yaml/badge.svg)](https://github.com/Danishwani1999/k8s-gitops-observability/actions/workflows/ci.yaml)
+[![CI](https://github.com/Danishwani1999/k8s-gitops-observability/actions/workflows/ci.yml/badge.svg)](https://github.com/Danishwani1999/k8s-gitops-observability/actions/workflows/ci.yml)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.35-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Kyverno](https://img.shields.io/badge/Kyverno-v1.19-orange?logo=kyverno&logoColor=white)](https://kyverno.io/)
 [![Trivy](https://img.shields.io/badge/Trivy-Config%20Scanning-brightgreen?logo=aquasecurity&logoColor=white)](https://aquasecurity.github.io/trivy/)
@@ -77,7 +77,7 @@ The three newer policies run in **Audit** mode on purpose: they report violation
 ```
 k8s-gitops-observability/
 ├── .github/workflows/
-│   └── ci.yaml                              # Trivy + kubeconform + Kyverno policy tests
+│   └── ci.yml                              # Trivy + kubeconform + Kyverno policy tests
 ├── argocd/
 │   └── application.yaml                     # Argo CD Application syncing policies/ from this repo
 ├── charts/
@@ -109,6 +109,14 @@ k8s-gitops-observability/
 **Prerequisites:** Docker, Minikube, kubectl, Helm and Trivy (tested on Ubuntu 24.04 in WSL2).
 
 **Resources:** Argo CD, Kyverno, Prometheus and Grafana together are heavy. Use at least **6 GB RAM and 4 CPUs** for Minikube (see Known Issues).
+
+**Low-memory mode (about 3.5 GB):** skip Prometheus and Grafana and shrink Minikube:
+
+```bash
+SKIP_MONITORING=1 MINIKUBE_MEMORY=3500 MINIKUBE_CPUS=2 ./scripts/run-all.sh
+```
+
+Kyverno runs as a single admission controller with relaxed probes (`charts/kyverno-values.yaml`).
 
 ```bash
 git clone git@github.com:Danishwani1999/k8s-gitops-observability.git
@@ -277,7 +285,7 @@ This is a learning lab, not a production setup.
 - **Partial GitOps.** Argo CD manages the policies. Kyverno and kube-prometheus-stack are still installed with Helm by `run-all.sh`.
 - **Audit results via metrics only.** The Kyverno reports controller is not deployed, so `PolicyReport` objects are not generated. Audit results are visible through Prometheus metrics.
 - **Basic root policy.** `disallow-root-user` only checks the pod-level `securityContext.runAsNonRoot`. Container-level settings and `runAsUser: 0` are not covered yet.
-- **Unpinned versions.** Helm chart and Argo CD manifest versions are not pinned yet.
+- **Partly pinned versions.** The Kyverno chart is pinned to 3.9.1. kube-prometheus-stack and the Argo CD manifest are not pinned yet.
 - **Deprecated API.** Policies use `kyverno.io/v1` `ClusterPolicy`, which Kyverno has deprecated in favour of the CEL-based `policies.kyverno.io` APIs.
 
 ---

@@ -2,22 +2,26 @@
 set -e
 
 echo "🚀 [1/6] Checking / starting Minikube..."
-minikube status >/dev/null 2>&1 || minikube start --driver=docker --memory=6144 --cpus=4
+minikube status >/dev/null 2>&1 || minikube start --driver=docker --memory="${MINIKUBE_MEMORY:-6144}" --cpus="${MINIKUBE_CPUS:-4}"
 
 echo "🐙 [2/6] Installing Argo CD..."
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-echo "📊 [3/6] Installing Prometheus and Grafana..."
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update >/dev/null 2>&1
-helm repo update >/dev/null 2>&1
-helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
-  --namespace monitoring --create-namespace
+if [ "${SKIP_MONITORING:-0}" = "1" ]; then
+  echo "📊 [3/6] Skipping Prometheus and Grafana (SKIP_MONITORING=1)"
+else
+  echo "📊 [3/6] Installing Prometheus and Grafana..."
+  helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update >/dev/null 2>&1
+  helm repo update >/dev/null 2>&1
+  helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+    --namespace monitoring --create-namespace
+fi
 
 echo "🛡️ [4/6] Installing Kyverno..."
 helm repo add kyverno https://kyverno.github.io/kyverno --force-update >/dev/null 2>&1
 helm repo update >/dev/null 2>&1
-helm upgrade --install kyverno kyverno/kyverno \
+helm upgrade --install kyverno kyverno/kyverno --version 3.9.1 \
   --namespace kyverno --create-namespace -f charts/kyverno-values.yaml
 
 echo "⏳ Waiting for the Kyverno admission controller..."

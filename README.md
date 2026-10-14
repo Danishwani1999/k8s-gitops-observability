@@ -1,311 +1,196 @@
-# Kubernetes GitOps & Observability Lab 🛡️📊
 
-[![CI](https://github.com/Danishwani1999/k8s-gitops-observability/actions/workflows/ci.yml/badge.svg)](https://github.com/Danishwani1999/k8s-gitops-observability/actions/workflows/ci.yml)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.35-blue?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
-[![Kyverno](https://img.shields.io/badge/Kyverno-v1.19-orange?logo=kyverno&logoColor=white)](https://kyverno.io/)
-[![Trivy](https://img.shields.io/badge/Trivy-Config%20Scanning-brightgreen?logo=aquasecurity&logoColor=white)](https://aquasecurity.github.io/trivy/)
-[![Argo CD](https://img.shields.io/badge/Argo%20CD-GitOps-red?logo=argo&logoColor=white)](https://argoproj.github.io/argo-cd/)
-[![Prometheus](https://img.shields.io/badge/Prometheus-Telemetry-e6522c?logo=prometheus&logoColor=white)](https://prometheus.io/)
-[![Grafana](https://img.shields.io/badge/Grafana-Dashboards-f46800?logo=grafana&logoColor=white)](https://grafana.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# Kubernetes GitOps & Policy Enforcement Lab
 
-A hands-on **DevSecOps lab** on Minikube that combines Kubernetes admission control (Kyverno), policy-as-code managed through GitOps (Argo CD), automated CI checks (GitHub Actions with Trivy, kubeconform and Kyverno tests) and a monitoring stack (Prometheus and Grafana).
+A local Kubernetes lab that combines **policy-as-code admission control (Kyverno)**, **manifest scanning (Trivy)**, **GitOps delivery (Argo CD)** and **metrics/dashboards (Prometheus + Grafana)**. Everything runs on a single Minikube cluster, and one script provisions and verifies it.
 
-Every result shown in this README was captured from a real run of this repository.
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Minikube-326CE5?logo=kubernetes&logoColor=white)
+![Kyverno](https://img.shields.io/badge/Kyverno-Policy%20Engine-F5A623)
+![Argo CD](https://img.shields.io/badge/Argo%20CD-GitOps-EF7B4D?logo=argo&logoColor=white)
+![Trivy](https://img.shields.io/badge/Trivy-Scanning-1904DA)
+![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-E6522C?logo=prometheus&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-Dashboards-F46800?logo=grafana&logoColor=white)
+
+> **Scope:** this is a learning and demonstration environment on Minikube, not a production reference architecture. See [Limitations](#limitations-and-roadmap).
 
 ---
 
-## 🗺️ Architecture
+## What this demonstrates
+
+- **Shift-left security:** Trivy scans Kubernetes manifests before they reach the cluster.
+- **Admission control:** a Kyverno `ClusterPolicy` rejects pods that run as root, and a test suite proves both the deny and allow paths.
+- **GitOps:** an Argo CD `Application` tracks this repository and reports sync and health status.
+- **Observability:** kube-prometheus-stack provides Prometheus and Grafana for cluster and policy metrics.
+- **Repeatability:** one script builds the environment, applies policies and runs the tests.
+
+## Architecture
 
 ```mermaid
 graph TD
-    Dev[Developer / WSL] -->|git push| GH[GitHub Repository]
+    Dev[Developer] -->|git push| GH[GitHub repository]
+    GH -->|sync| ARGO[Argo CD]
+    ARGO -->|apply manifests| K8S[Minikube cluster]
 
-    GH -->|triggers| CI[GitHub Actions CI]
-    CI --> T1[Trivy config scan]
-    CI --> T2[kubeconform schema check]
-    CI --> T3[Kyverno CLI policy tests]
+    subgraph Security
+        TRIVY[Trivy scan] -->|checks manifests| GH
+        KYV[Kyverno admission webhook] -->|allow / deny| K8S
+    end
 
-    GH -->|Argo CD syncs policies folder| Argo[Argo CD]
-    Argo -->|applies ClusterPolicies| K8s[Minikube Cluster]
-
-    Kyverno[Kyverno Admission Controller] -->|Enforce: block root pods| K8s
-    Kyverno -->|Audit: report violations| K8s
-
-    K8s -->|metrics| Prom[Prometheus]
-    Prom --> Graf[Grafana]
+    subgraph Observability
+        K8S -->|metrics| PROM[Prometheus]
+        PROM --> GRAF[Grafana]
+    end
 ```
 
-**How the pieces fit**
+| Tool | Role |
+|---|---|
+| Kyverno | Admission controller enforcing security policies |
+| Trivy | Static misconfiguration scanning |
+| Argo CD | Declarative GitOps delivery and drift detection |
+| Prometheus / Grafana | Metrics collection and dashboards (kube-prometheus-stack) |
+| Helm | Installs Kyverno and the monitoring stack |
+| Minikube | Local Kubernetes cluster (Docker driver) |
 
-- **CI** validates every push and pull request before changes are trusted.
-- **Argo CD** syncs the `policies/` folder from `main` to the cluster, with `prune` and `selfHeal` enabled. Deleting a policy by hand makes Argo CD restore it from Git.
-- **Kyverno** enforces or audits the policies at admission time and exposes `kyverno_policy_results_total` metrics.
-- **Prometheus and Grafana** (kube-prometheus-stack) are installed with Helm by `scripts/run-all.sh`.
+## Repository structure
 
----
-
-## 🛡️ Policies
-
-| Policy | Mode | What it does |
-| --- | --- | --- |
-| `disallow-root-user` | **Enforce** | Blocks pods unless `securityContext.runAsNonRoot` is `true`. |
-| `disallow-latest-tag` | Audit | Flags images without a tag or using `:latest`. |
-| `require-resource-limits` | Audit | Flags containers without CPU and memory limits. |
-| `disallow-privileged-containers` | Audit | Flags privileged containers. |
-
-The three newer policies run in **Audit** mode on purpose: they report violations without blocking anything, so existing system pods in `argocd` and `monitoring` are not disrupted.
-
----
-
-## 🧰 Toolchain
-
-| Tool | Role | Purpose |
-| --- | --- | --- |
-| **Kyverno** | Admission controller | Enforces and audits Kubernetes policies. |
-| **Trivy** | Static analysis | Scans manifests for misconfigurations in CI and locally. |
-| **kubeconform** | Schema validation | Validates Kubernetes manifests in CI. |
-| **Argo CD** | GitOps / CD | Keeps cluster policies in sync with this repository. |
-| **GitHub Actions** | CI | Runs Trivy, kubeconform and Kyverno policy tests on every push and PR. |
-| **Prometheus / Grafana** | Observability | Metrics collection and dashboards. |
-| **Helm / Minikube** | Infrastructure | Installs charts and runs a local cluster on Ubuntu (WSL2). |
-
----
-
-## 📂 Repository Structure
-
-```
+```text
 k8s-gitops-observability/
-├── .github/workflows/
-│   └── ci.yml                              # Trivy + kubeconform + Kyverno policy tests
 ├── argocd/
-│   └── application.yaml                     # Argo CD Application syncing policies/ from this repo
+│   └── application.yaml          # Argo CD Application tracking this repo
 ├── charts/
-│   └── kyverno-values.yaml                  # Helm value overrides for Kyverno
+│   └── kyverno-values.yaml       # Helm value overrides for Kyverno
 ├── policies/
-│   ├── disallow-root-user.yaml              # Enforce
-│   ├── disallow-latest-tag.yaml             # Audit
-│   ├── require-resource-limits.yaml         # Audit
-│   └── disallow-privileged-containers.yaml  # Audit
+│   └── disallow-root-user.yaml   # ClusterPolicy: block pods that may run as root
 ├── scripts/
-│   ├── run-all.sh                           # One-go setup of the whole stack
-│   └── scan-and-test.sh                     # Trivy scan + live admission tests
+│   ├── run-all.sh                # Provision cluster, install components, run tests
+│   └── scan-and-test.sh          # Trivy scan + admission pass/fail tests
 ├── tests/
-│   ├── fail-root-pod.yaml                   # Insecure pod (expected: blocked)
-│   ├── pass-non-root-pod.yaml               # Secure pod (expected: created)
-│   ├── kyverno-test/
-│   │   └── kyverno-test.yaml                # Kyverno CLI unit test for disallow-root-user
-│   └── policy-tests/
-│       ├── good-pod.yaml                    # Compliant pod for the audit policies
-│       ├── bad-pod.yaml                     # Violating pod (unit tests only, never deploy)
-│       └── kyverno-test.yaml                # Kyverno CLI unit tests for the audit policies
+│   ├── fail-root-pod.yaml        # Must be rejected by Kyverno
+│   └── pass-non-root-pod.yaml    # Must be admitted
 └── README.md
 ```
 
----
+## The policy
 
-## 🛠️ Quick Start
+`policies/disallow-root-user.yaml` is a Kyverno validation policy that requires `securityContext.runAsNonRoot: true`. Pods that do not set it are rejected at admission time:
 
-**Prerequisites:** Docker, Minikube, kubectl, Helm and Trivy (tested on Ubuntu 24.04 in WSL2).
-
-**Resources:** Argo CD, Kyverno, Prometheus and Grafana together are heavy. Use at least **6 GB RAM and 4 CPUs** for Minikube (see Known Issues).
-
-**Low-memory mode (about 3.5 GB):** skip Prometheus and Grafana and shrink Minikube:
-
-```bash
-SKIP_MONITORING=1 MINIKUBE_MEMORY=3500 MINIKUBE_CPUS=2 ./scripts/run-all.sh
+```text
+Error from server: admission webhook "validate.kyverno.svc-fail" denied the request:
+resource Pod/default/insecure-root-workload was blocked due to the following policies
+disallow-root-user:
+  check-runAsNonRoot: 'validation error: Running as root is not allowed.
+  Set securityContext.runAsNonRoot to true.'
 ```
 
-Kyverno runs as a single admission controller with relaxed probes (`charts/kyverno-values.yaml`).
+The policy's `validationFailureAction` is set to **Enforce**, meaning non-compliant pods are blocked at admission time rather than just audited.
+
+## Prerequisites
+
+- Linux, macOS, or WSL2 (Ubuntu)
+- Docker, Minikube, `kubectl`, Helm 3, Trivy
+- About 4 CPUs and 8 GB RAM free for the cluster
+
+## Quick start
 
 ```bash
-git clone git@github.com:Danishwani1999/k8s-gitops-observability.git
+git clone https://github.com/Danishwani1999/k8s-gitops-observability.git
 cd k8s-gitops-observability
 chmod +x scripts/*.sh
 ./scripts/run-all.sh
 ```
 
-`run-all.sh` runs six steps:
+`run-all.sh` performs these steps:
 
-1. Starts Minikube (6 GB RAM, 4 CPUs) if it isn't running.
-2. Installs Argo CD.
-3. Installs kube-prometheus-stack (Prometheus and Grafana) with Helm.
-4. Installs Kyverno with Helm, using `charts/kyverno-values.yaml`.
-5. Applies `argocd/application.yaml`, so Argo CD deploys everything in `policies/` from Git.
-6. Runs `scripts/scan-and-test.sh` (Trivy scan and live admission tests).
+1. Starts Minikube if it is not running.
+2. Installs Argo CD into the `argocd` namespace.
+3. Installs kube-prometheus-stack (Prometheus and Grafana) into `monitoring`.
+4. Installs Kyverno with `charts/kyverno-values.yaml` and waits for the admission controller.
+5. Applies the policies in `policies/`.
+6. Runs `scripts/scan-and-test.sh`.
 
-The script is safe to re-run. On a brand-new cluster, step 5 can fail if the Argo CD CRDs aren't registered yet; wait about 30 seconds and run the script again.
+## Validation
 
----
+`scripts/scan-and-test.sh` runs two phases:
 
-## ✅ Verified Results
+1. **Static scan:** Trivy scans the repository manifests for misconfigurations.
+2. **Admission test:** applies `fail-root-pod.yaml` and expects a rejection, then applies `pass-non-root-pod.yaml` and expects success.
 
-### 1. CI pipeline
+The script exits non-zero if either expectation is not met, so it can be used as a CI gate.
 
-GitHub Actions runs on every push to `main` and on pull requests:
+### Sample output
 
-| Step | What it checks |
-| --- | --- |
-| Trivy config scan | Misconfigurations (HIGH and CRITICAL) in policies and Argo CD manifests. The deliberately insecure `tests/` folder is skipped. |
-| kubeconform | Schema validation of the manifests (`-strict`; custom resources without a schema are skipped). |
-| Kyverno CLI tests | 8 assertions proving each policy passes compliant pods and fails violating ones, with no cluster needed. |
-
-The latest run passes (see the CI badge at the top).
-
-### 2. Trivy scan and live admission tests
-
-```bash
-./scripts/scan-and-test.sh
-```
-
-```
-=== Running Trivy security scan on policies ===
-Report Summary
-┌─────────────────────────┬────────────┬───────────────────┐
-│         Target          │    Type    │ Misconfigurations │
-├─────────────────────────┼────────────┼───────────────────┤
-│ disallow-root-user.yaml │ kubernetes │         0         │
-└─────────────────────────┴────────────┴───────────────────┘
-
-=== Testing root pod restriction (Expect block) ===
-Error from server: error when creating "tests/fail-root-pod.yaml": admission webhook "validate.kyverno.svc-fail" denied the request:
-
-resource Pod/default/insecure-root-workload was blocked due to the following policies
-
-disallow-root-user:
-  check-runAsNonRoot: 'validation error: Running as root is not allowed. Set securityContext.runAsNonRoot to true. rule check-runAsNonRoot failed at path /spec/securityContext/runAsNonRoot/'
+<!-- Replace with output from YOUR latest run. -->
+```text
+=== Running Trivy security scan ===
+...
+=== Testing root pod restriction (expect block) ===
 SUCCESS: Kyverno correctly blocked the root pod.
 
-=== Testing secure pod deployment (Expect success) ===
+=== Testing secure pod deployment (expect success) ===
 pod/secure-workload created
-pod "secure-workload" deleted from default namespace
-
-All Trivy scans and policy checks passed!
+All checks passed.
 ```
 
-### 3. GitOps: Argo CD syncs policies from Git
+## GitOps with Argo CD
+
+`argocd/application.yaml` registers this repository with Argo CD.
 
 ```bash
-kubectl get applications -n argocd
+kubectl apply -f argocd/application.yaml
+kubectl -n argocd get applications
+kubectl -n argocd port-forward svc/argocd-server 8080:443
+# Admin password:
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
-```
-NAME                       SYNC STATUS   HEALTH STATUS
-k8s-gitops-observability   Synced        Healthy
-```
+The Argo CD `Application` is configured to sync the manifest directories (such as `charts/` and `policies/`) to the cluster namespaces, while the `tests/` directory is excluded from synchronization to ensure test pods are only handled by local verification scripts.
 
-The three Audit policies were added by pushing files to `policies/`. They were never applied by hand, and Argo CD deployed them:
+## Observability
 
 ```bash
-kubectl get clusterpolicy
+kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80
+kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090
 ```
 
-```
-NAME                             ADMISSION   BACKGROUND   READY   AGE
-disallow-latest-tag              true        true         True    42s
-disallow-privileged-containers   true        true         True    42s
-disallow-root-user               true        true         True    124m
-require-resource-limits          true        true         True    42s
+Kyverno exposes policy metrics that Prometheus can scrape. Example queries (confirm exact names against your Kyverno version at `/metrics`):
+
+```promql
+sum by (policy_name, rule_result) (kyverno_policy_results_total)
+sum(rate(kyverno_admission_requests_total[5m]))
 ```
 
-### 4. Self-healing (drift correction)
+Kyverno exposes native Prometheus metrics (such as policy results and admission request totals) which are scraped by the monitoring stack. You can visualize admission counts and policy enforcement rates in Grafana using the dashboard preview below:
 
-Deleting a policy by hand makes Argo CD restore it from Git:
+![Grafana Policy Dashboard](docs/grafana-policy-dashboard.png)
+
+## Cleanup
 
 ```bash
-kubectl delete clusterpolicy disallow-root-user
-sleep 90
-kubectl get clusterpolicy
+minikube delete
 ```
 
-```
-NAME                             ADMISSION   BACKGROUND   READY   AGE
-disallow-latest-tag              true        true         True    9m7s
-disallow-privileged-containers   true        true         True    9m7s
-disallow-root-user               true        true         True    2m18s    <- recreated by Argo CD
-require-resource-limits          true        true         True    9m7s
-```
+## Limitations and roadmap
 
-The policy came back within a couple of minutes (Argo CD reconciles on its refresh cycle, about every 3 minutes by default). While a policy is missing, it isn't enforced.
+Current limitations:
 
-### 5. Prometheus: real Kyverno metrics
+- Local Minikube only, with a single policy.
+- Kyverno, Prometheus and Grafana are installed by script. Argo CD manages the repo contents, not the whole stack.
+- Chart and manifest versions are not pinned yet.
+- Trivy runs locally, not in CI.
 
-```bash
-kubectl port-forward -n kyverno svc/kyverno-svc-metrics 8001:8000 &
-curl -s localhost:8001/metrics | grep kyverno_policy_results_total
-```
+Planned improvements:
 
-**Enforce mode.** The root pod was blocked and the secure pod was allowed (labels trimmed for readability):
+- [ ] Move Kyverno and kube-prometheus-stack into Argo CD Applications (app-of-apps pattern)
+- [ ] Pin Helm chart and Argo CD versions
+- [ ] Add policies: disallow `latest` tags, require resource limits, block privileged containers, restrict image registries
+- [ ] GitHub Actions: Trivy scan, `kubeconform`/`kubectl --dry-run`, policy tests with the Kyverno CLI
+- [ ] Grafana dashboard stored as JSON in the repo
+- [ ] Scan container images, not only manifests
 
-```
-kyverno_policy_results_total{policy_name="disallow-root-user",policy_validation_mode="enforce",rule_name="check-runAsNonRoot",rule_result="fail"} 1
-kyverno_policy_results_total{policy_name="disallow-root-user",policy_validation_mode="enforce",rule_name="check-runAsNonRoot",rule_result="pass"} 1
-```
+## Author
 
-**Audit mode.** A pod using `busybox:latest` with no resource limits was created (not blocked), but the violations were recorded:
+**Danish Wani** · Fresher DevOps & Cloud Engineer
+GitHub: [@Danishwani1999](https://github.com/Danishwani1999)
 
-```
-kyverno_policy_results_total{policy_name="disallow-latest-tag",policy_validation_mode="audit",rule_name="require-image-tag",rule_result="pass"} 1
-kyverno_policy_results_total{policy_name="disallow-latest-tag",policy_validation_mode="audit",rule_name="validate-image-tag",rule_result="fail"} 1
-kyverno_policy_results_total{policy_name="disallow-privileged-containers",policy_validation_mode="audit",rule_name="privileged-containers",rule_result="pass"} 1
-kyverno_policy_results_total{policy_name="require-resource-limits",policy_validation_mode="audit",rule_name="validate-resources",rule_result="fail"} 1
-```
+## License
 
-### 6. Grafana
-
-Grafana ships with kube-prometheus-stack. To open it:
-
-```bash
-kubectl port-forward -n monitoring svc/monitoring-grafana 3001:80
-```
-
-Then browse to `http://localhost:3001`. The bundled Kubernetes dashboards work out of the box. A custom Kyverno dashboard is on the roadmap.
-
----
-
-## 🧪 Troubleshooting
-
-| Symptom | Likely cause and fix |
-| --- | --- |
-| `connection refused` from kubectl | Minikube is stopped. Run `minikube start --driver=docker`. |
-| Pod creation fails with `failed calling webhook ... connection refused` | The Kyverno admission controller is down and the webhook fails closed. Check `kubectl get pods -n kyverno`, delete the controller pod if it's stuck, and wait for `1/1 Running`. |
-| Kyverno pod stuck at `0/1` or restarting | Startup probe timeouts from low resources. Delete the pod and give Minikube more memory. |
-| `bind: address already in use` on port-forward | Another process uses that local port. Pick a different local port (for example `8001:8000`). |
-| Argo CD app not `Synced` | Argo CD reads from GitHub, so make sure your changes are committed and pushed to `main`. |
-| Policy deleted by hand hasn't returned | Wait for the Argo CD refresh, or force it with `kubectl annotate application k8s-gitops-observability -n argocd argocd.argoproj.io/refresh=hard --overwrite`. |
-
----
-
-## ⚠️ Known Issues and Limitations
-
-This is a learning lab, not a production setup.
-
-- **Resource hungry.** On a small Minikube, the Kyverno admission controller restarts repeatedly because of startup-probe timeouts. Use at least 6 GB RAM and 4 CPUs.
-- **Fail-closed webhook.** While Kyverno is down, the cluster refuses to create pods. That is the safe default for enforcement, but it means Kyverno's availability matters.
-- **Partial GitOps.** Argo CD manages the policies. Kyverno and kube-prometheus-stack are still installed with Helm by `run-all.sh`.
-- **Audit results via metrics only.** The Kyverno reports controller is not deployed, so `PolicyReport` objects are not generated. Audit results are visible through Prometheus metrics.
-- **Basic root policy.** `disallow-root-user` only checks the pod-level `securityContext.runAsNonRoot`. Container-level settings and `runAsUser: 0` are not covered yet.
-- **Partly pinned versions.** The Kyverno chart is pinned to 3.9.1. kube-prometheus-stack and the Argo CD manifest are not pinned yet.
-- **Deprecated API.** Policies use `kyverno.io/v1` `ClusterPolicy`, which Kyverno has deprecated in favour of the CEL-based `policies.kyverno.io` APIs.
-
----
-
-## 🚀 Roadmap
-
-- [x] GitHub Actions CI with Trivy, kubeconform and Kyverno policy tests
-- [x] Additional policies (latest tag, resource limits, privileged containers) in Audit mode
-- [x] Argo CD syncing policies from this repository, with self-healing verified
-- [ ] Manage Kyverno and kube-prometheus-stack through Argo CD (app-of-apps) and pin all versions
-- [ ] Grafana dashboard for Kyverno metrics. The `ServiceMonitor` and `PrometheusRule` are committed in `monitoring/` but only work once kube-prometheus-stack is installed (not deployed in low-memory mode)
-- [ ] Review audit results, then switch the Audit policies to `Enforce`
-- [ ] Enable the reports controller for `PolicyReport` objects
-- [ ] Migrate `ClusterPolicy` to `ValidatingPolicy`
-- [ ] Scan container images with Trivy, not just manifests
-
----
-
-## 👤 Author
-
-**Danish Wani**
-Fresher DevOps & Cloud Engineer
-[GitHub Profile](https://github.com/Danishwani1999)
+MIT. See [LICENSE](LICENSE).

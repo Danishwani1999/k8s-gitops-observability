@@ -1,4 +1,5 @@
-USER-SUPPLIED VALUES:
+# Lightweight Kyverno install for a single-node Minikube lab.
+# Only the admission controller runs; background scans, reports and cleanup are disabled to save memory.
 backgroundController:
   enabled: false
 cleanupController:

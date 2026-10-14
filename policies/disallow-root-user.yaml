@@ -7,8 +7,8 @@ metadata:
     policies.kyverno.io/category: Pod Security Standards (Restricted)
     policies.kyverno.io/severity: medium
     policies.kyverno.io/description: >-
-      Containers must not run as root. Requires runAsNonRoot: true at pod or container level
-      and blocks explicit runAsUser: 0.
+      Blocks pods and containers that explicitly set runAsUser to 0 (root).
+      Pods that set no user at all are not caught by this rule.
 spec:
   validationFailureAction: Enforce
   background: true
@@ -16,21 +16,24 @@ spec:
     - name: check-run-as-non-root
       match:
         any:
-        - resources:
-            kinds:
-              - Pod
+          - resources:
+              kinds:
+                - Pod
       exclude:
         any:
-        - resources:
-            namespaces:
-              - kube-system
-              - argocd
+          - resources:
+              namespaces:
+                - kube-system
+                - argocd
       validate:
-        message: "Running as root is forbidden. Set securityContext.runAsNonRoot: true and runAsUser > 0."
+        message: "Running as root is forbidden. runAsUser must be greater than 0."
         pattern:
           spec:
             =(securityContext):
               =(runAsUser): ">0"
+            =(initContainers):
+              - =(securityContext):
+                  =(runAsUser): ">0"
             containers:
               - =(securityContext):
                   =(runAsUser): ">0"

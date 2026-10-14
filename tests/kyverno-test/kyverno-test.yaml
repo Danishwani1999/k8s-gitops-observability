@@ -9,13 +9,13 @@ resources:
   - ../pass-non-root-pod.yaml
 results:
   - policy: disallow-root-user
-    rule: check-runAsNonRoot
+    rule: check-run-as-non-root
     kind: Pod
     resources:
       - insecure-root-workload
     result: fail
   - policy: disallow-root-user
-    rule: check-runAsNonRoot
+    rule: check-run-as-non-root
     kind: Pod
     resources:
       - secure-workload

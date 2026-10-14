@@ -7,12 +7,12 @@ metadata:
     release: monitoring
 spec:
   groups:
-    - name: kyverno.rules
-      rules:
-        - alert: KyvernoDeniedRequests
-          expr: sum(increase(kyverno_admission_review_duration_seconds_count[10m])) > 0
-          for: 0m
-          labels:
-            severity: info
-          annotations:
-            summary: "Kyverno processed admission requests"
+  - name: kyverno.rules
+    rules:
+    - alert: KyvernoPolicyViolations
+      expr: sum by (policy_name, policy_validation_mode) (increase(kyverno_policy_results_total{rule_result="fail"}[10m])) > 0
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Kyverno policy {{ $labels.policy_name }} recorded violations ({{ $labels.policy_validation_mode }} mode)"

@@ -296,7 +296,7 @@ This is a learning lab, not a production setup.
 - [x] Additional policies (latest tag, resource limits, privileged containers) in Audit mode
 - [x] Argo CD syncing policies from this repository, with self-healing verified
 - [ ] Manage Kyverno and kube-prometheus-stack through Argo CD (app-of-apps) and pin all versions
-- [ ] `ServiceMonitor`, `PrometheusRule` alerts and a Grafana dashboard for Kyverno metrics, committed as code
+- [ ] Grafana dashboard for Kyverno metrics. The `ServiceMonitor` and `PrometheusRule` are committed in `monitoring/` but only work once kube-prometheus-stack is installed (not deployed in low-memory mode)
 - [ ] Review audit results, then switch the Audit policies to `Enforce`
 - [ ] Enable the reports controller for `PolicyReport` objects
 - [ ] Migrate `ClusterPolicy` to `ValidatingPolicy`

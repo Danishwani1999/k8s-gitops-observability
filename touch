@@ -1,0 +1,14 @@
+import pytest
+
+# Example test function verifying log line parsing / error keyword detection
+def contains_error(log_line: str) -> bool:
+    error_keywords = ["ERROR", "FATAL", "CRITICAL", "Exception"]
+    return any(keyword in log_line for keyword in error_keywords)
+
+def test_contains_error_positive():
+    line = "2026-10-14 10:00:00 [ERROR] Database connection failed!"
+    assert contains_error(line) is True
+
+def test_contains_error_negative():
+    line = "2026-10-14 10:00:00 [INFO] User logged in successfully."
+    assert contains_error(line) is False

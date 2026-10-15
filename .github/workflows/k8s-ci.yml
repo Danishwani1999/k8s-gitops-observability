@@ -1,0 +1,26 @@
+name: K8s Manifest CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup kubeconform
+        uses: stefanprodan/kubeconform-action@v4
+        with:
+          path: 'charts'
+          kubectl_version: '1.28.0'
+
+      - name: Lint Kyverno Policies
+        uses: kyverno/action-cli@v1.2.0
+        with:
+          name: test
+          path: policies/

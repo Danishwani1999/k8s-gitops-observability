@@ -6,7 +6,7 @@ minikube status >/dev/null 2>&1 || minikube start --driver=docker --memory="${MI
 
 echo "🐙 [2/6] Installing Argo CD..."
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION:-v2.13.3}/manifests/install.yaml
 
 if [ "${SKIP_MONITORING:-0}" = "1" ]; then
   echo "📊 [3/6] Skipping Prometheus and Grafana (SKIP_MONITORING=1)"
@@ -26,6 +26,11 @@ helm upgrade --install kyverno kyverno/kyverno --version 3.9.1 \
 
 echo "⏳ Waiting for the Kyverno admission controller..."
 kubectl rollout status deployment kyverno-admission-controller -n kyverno --timeout=180s
+
+if [ "${SKIP_MONITORING:-0}" != "1" ]; then
+  echo "📈 Applying Kyverno ServiceMonitor and alert rules..."
+  kubectl apply -f monitoring/
+fi
 
 echo "🔄 [5/6] Connecting Argo CD to this repository (syncs policies/)..."
 kubectl apply -f argocd/application.yaml

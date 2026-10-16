@@ -4,17 +4,15 @@ metadata:
   name: k8s-gitops-observability
   namespace: argocd
 spec:
-project: default
-source:
-repoURL: 'https://github.com/Danishwani1999/k8s-gitops-observability.git'
-targetRevision: main
-path: k8s/manifests
-destination:
-server: 'https://kubernetes.default.svc'
-namespace: observability
-syncPolicy:
-automated:
-  prune: true
-  selfHeal: true
-syncOptions:
-  - CreateNamespace=true
+  project: default
+  source:
+    repoURL: https://github.com/Danishwani1999/k8s-gitops-observability.git
+    targetRevision: main
+    path: policies
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

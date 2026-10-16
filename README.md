@@ -129,7 +129,7 @@ kubectl -n argocd port-forward svc/argocd-server 8080:443
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
-The Argo CD `Application` is configured to sync the manifest directories (such as `charts/` and `policies/`) to the cluster namespaces, Only `policies/` is synced, so `tests/` is never deployed.
+The Argo CD `Application` syncs only `policies/` to the cluster, so `tests/` is never deployed.
 
 ## Observability
 

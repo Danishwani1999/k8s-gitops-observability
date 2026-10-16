@@ -6,9 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   policy-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Install Kyverno CLI (pinned)
@@ -22,17 +26,24 @@ jobs:
 
   manifest-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install Trivy (pinned)
+      - name: Install Trivy (pinned script and version)
         run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.75.0
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.75.0/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.75.0
           trivy --version
       - name: Trivy scan of the compliant test pod
         run: trivy config --severity HIGH,CRITICAL --exit-code 1 tests/pass-non-root-pod.yaml
+      - name: Trivy scan of policies, Argo CD and monitoring manifests
+        run: |
+          for d in policies argocd monitoring; do
+            trivy config --severity HIGH,CRITICAL --exit-code 1 "$d"
+          done
 
   manifest-validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Install kubeconform (pinned)
@@ -41,3 +52,12 @@ jobs:
           sudo mv kubeconform /usr/local/bin/
       - name: Validate manifests
         run: kubeconform -strict -ignore-missing-schemas -summary tests/pass-non-root-pod.yaml tests/fail-root-pod.yaml policies argocd monitoring
+
+  argocd-app-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install pyyaml
+      - name: Argo CD Application is valid and its path exists
+        run: python3 scripts/check-argocd-app.py

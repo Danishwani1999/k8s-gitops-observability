@@ -3,6 +3,7 @@
 
 A local Kubernetes lab that combines **policy-as-code admission control (Kyverno)**, **manifest scanning (Trivy)**, **GitOps delivery (Argo CD)** and **metrics/dashboards (Prometheus + Grafana)**. Everything runs on a single Minikube cluster, and one script provisions and verifies it.
 
+![CI](https://github.com/Danishwani1999/k8s-gitops-observability/actions/workflows/ci.yml/badge.svg)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-Minikube-326CE5?logo=kubernetes&logoColor=white)
 ![Kyverno](https://img.shields.io/badge/Kyverno-Policy%20Engine-F5A623)
 ![Argo CD](https://img.shields.io/badge/Argo%20CD-GitOps-EF7B4D?logo=argo&logoColor=white)
@@ -59,7 +60,7 @@ graph TD
 ├── monitoring/                 # Kyverno ServiceMonitor and alert
 ├── scripts/                    # run-all.sh, scan-and-test.sh
 ├── tests/                      # Test pods and Kyverno CLI tests
-└── .github/workflows/ci.yml    # Kyverno tests, Trivy, kubeconform
+└── .github/workflows/ci.yml    # Kyverno tests, Trivy, kubeconform, Argo CD app check
 ```
 
 ## The policy
@@ -161,7 +162,7 @@ minikube delete
 - Kyverno and monitoring are installed by script, not by Argo CD.
 - The root-user policy only catches an explicit `runAsUser: 0`.
 - It uses `failurePolicy: Ignore` (fail-open) for low-resource Minikube.
-- Trivy scans only the compliant test pod.
+- Trivy scans the compliant test pod and the policy, Argo CD and monitoring manifests; container images are not scanned.
 
 Next steps:
 

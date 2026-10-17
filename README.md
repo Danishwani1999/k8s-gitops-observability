@@ -23,6 +23,32 @@ A local Kubernetes lab that combines **policy-as-code admission control (Kyverno
 - **Observability:** kube-prometheus-stack provides Prometheus and Grafana for cluster and policy metrics.
 - **Repeatability:** one script builds the environment, applies policies and runs the tests.
 
+## Screenshots
+
+**Argo CD synced, policies loaded**
+
+![Argo CD synced](docs/argocd-synced.png)
+
+**Kyverno denies the root pod and admits the hardened pod**
+
+![Policy deny](docs/policy-deny.png)
+
+**GitHub Actions CI**
+
+![CI green](docs/ci-green.png)
+
+**Prometheus scraping Kyverno metrics**
+
+![Prometheus targets](docs/prometheus-targets.png)
+
+**Alert firing on policy violations**
+
+![Prometheus alert](docs/prometheus-alert.png)
+
+**Kyverno policy results in Grafana**
+
+![Grafana Kyverno](docs/grafana-kyverno.png)
+
 ## Architecture
 
 ```mermaid
@@ -154,21 +180,6 @@ kubectl -n monitoring get secret monitoring-grafana -o jsonpath="{.data.admin-pa
 ```
 
 
-
-## Observability screenshots
-
-Prometheus scraping Kyverno metrics:
-
-![Prometheus targets](docs/prometheus-targets.png)
-
-Alert firing on policy violations:
-
-![Prometheus alert](docs/prometheus-alert.png)
-
-Kyverno policy results in Grafana:
-
-![Grafana Kyverno](docs/grafana-kyverno.png)
-
 ## Running on a small machine
 
 Verified on WSL2 with 3 CPUs and about 5 GB of RAM. Argo CD, Kyverno and Prometheus together can overload a node that small: health probes time out and pods restart in a loop. What worked:
@@ -223,17 +234,3 @@ disallow-privileged-containers   true        true         True    2m56s   Ready
 disallow-root-user               true        true         True    2m56s   Ready
 require-resource-limits          true        true         True    2m56s   Ready
 ```
-
-## Screenshots
-
-Argo CD synced and policies loaded:
-
-![Argo CD synced](docs/argocd-synced.png)
-
-Kyverno denies the root pod, admits the hardened pod:
-
-![Policy deny](docs/policy-deny.png)
-
-GitHub Actions CI:
-
-![CI green](docs/ci-green.png)

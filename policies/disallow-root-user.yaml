@@ -3,38 +3,40 @@ kind: ClusterPolicy
 metadata:
   name: disallow-root-user
   annotations:
-    policies.kyverno.io/title: Disallow Root User
-    policies.kyverno.io/category: Pod Security Standards (Restricted)
-    policies.kyverno.io/severity: medium
+    policies.kyverno.io/title: Require runAsNonRoot
     policies.kyverno.io/description: >-
-      Blocks pods and containers that explicitly set runAsUser to 0 (root).
-      Pods that set no user at all are not caught by this rule.
+      Pods must set runAsNonRoot to true at pod level or on every container.
+      Pods that set no user at all are rejected.
 spec:
   failurePolicy: Ignore
-  validationFailureAction: Enforce
   background: true
   rules:
-    - name: check-run-as-non-root
+    - name: check-runAsNonRoot
       match:
         any:
           - resources:
-              kinds:
-                - Pod
+              kinds: [Pod]
       exclude:
         any:
           - resources:
-              namespaces:
-                - kube-system
-                - argocd
+              namespaces: [kube-system, kube-public, kube-node-lease, kyverno, argocd, monitoring]
       validate:
-        message: "Running as root is forbidden. runAsUser must be greater than 0."
-        pattern:
-          spec:
-            =(securityContext):
-              =(runAsUser): ">0"
-            =(initContainers):
-              - =(securityContext):
-                  =(runAsUser): ">0"
-            containers:
-              - =(securityContext):
-                  =(runAsUser): ">0"
+        failureAction: Enforce
+        message: "Running as root is not allowed. Set securityContext.runAsNonRoot to true at pod or container level."
+        anyPattern:
+          - spec:
+              securityContext:
+                runAsNonRoot: true
+              =(initContainers):
+                - =(securityContext):
+                    =(runAsNonRoot): true
+              containers:
+                - =(securityContext):
+                    =(runAsNonRoot): true
+          - spec:
+              =(initContainers):
+                - securityContext:
+                    runAsNonRoot: true
+              containers:
+                - securityContext:
+                    runAsNonRoot: true

@@ -3,6 +3,7 @@ kind: ClusterPolicy
 metadata:
   name: disallow-latest-tag
 spec:
+  failurePolicy: Ignore
   validationFailureAction: Audit
   background: true
   rules:

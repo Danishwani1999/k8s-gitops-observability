@@ -3,6 +3,7 @@ kind: ClusterPolicy
 metadata:
   name: require-resource-limits
 spec:
+  failurePolicy: Ignore
   validationFailureAction: Audit
   background: true
   rules:

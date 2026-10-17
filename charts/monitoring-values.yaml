@@ -1,0 +1,31 @@
+# Lightweight kube-prometheus-stack for a small Minikube (3 CPUs, about 4 GiB).
+# No Alertmanager, no node-exporter, no default alert rules, and the control-plane
+# scrape targets that Minikube never exposes are switched off.
+alertmanager:
+  enabled: false
+nodeExporter:
+  enabled: false
+defaultRules:
+  create: false
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+prometheus:
+  prometheusSpec:
+    retention: 2d
+    resources:
+      requests:
+        memory: 256Mi
+      limits:
+        memory: 900Mi
+grafana:
+  resources:
+    requests:
+      memory: 192Mi
+    limits:
+      memory: 600Mi

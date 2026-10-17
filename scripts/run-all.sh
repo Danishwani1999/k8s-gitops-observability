@@ -15,7 +15,8 @@ else
   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update >/dev/null 2>&1
   helm repo update >/dev/null 2>&1
   helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
-    --namespace monitoring --create-namespace
+    --namespace monitoring --create-namespace \
+    -f charts/monitoring-values.yaml
 fi
 
 echo "🛡️ [4/6] Installing Kyverno..."

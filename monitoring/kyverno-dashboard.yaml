@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kyverno-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    release: monitoring
+data:
+  kyverno-policy-results.json: |
+    {
+      "uid": "kyverno-policy-results",
+      "title": "Kyverno policy results",
+      "tags": [
+        "kyverno"
+      ],
+      "schemaVersion": 39,
+      "version": 1,
+      "editable": true,
+      "refresh": "",
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Policy results by policy and result",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 16,
+            "x": 0,
+            "y": 0
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (policy_name, rule_result) (kyverno_policy_results_total)",
+              "legendFormat": "{{policy_name}} / {{rule_result}}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Root pods denied by disallow-root-user",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 10,
+            "w": 8,
+            "x": 16,
+            "y": 0
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(kyverno_policy_results_total{policy_name=\"disallow-root-user\",rule_result=\"fail\"})"
+            }
+          ]
+        }
+      ]
+    }

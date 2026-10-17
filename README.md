@@ -56,8 +56,10 @@ graph TD
 ```text
 ├── argocd/application.yaml     # Argo CD Application (syncs policies/)
 ├── charts/kyverno-values.yaml  # Low-resource Kyverno values
+├── charts/monitoring-values.yaml # Low-resource Prometheus and Grafana values
 ├── policies/                   # Kyverno ClusterPolicies
-├── monitoring/                 # Kyverno ServiceMonitor and alert
+├── monitoring/                 # Kyverno ServiceMonitor, alert and Grafana dashboard
+├── docs/                       # Screenshots of the verified run
 ├── scripts/                    # run-all.sh, scan-and-test.sh
 ├── tests/                      # Test pods and Kyverno CLI tests
 └── .github/workflows/ci.yml    # Kyverno tests, Trivy, kubeconform, Argo CD app check
@@ -70,7 +72,7 @@ explicitly set `runAsUser: 0`. Pods that set no user at all are not
 caught by this rule. It uses `failurePolicy: Ignore`, so if the Kyverno
 webhook is down, pods are admitted instead of blocked. That is a
 deliberate low-resource tradeoff for Minikube and should be `Fail` in
-production. The other three policies run in Audit mode.
+production. The other three policies run in Audit mode and also use `failurePolicy: Ignore`, so a Kyverno outage never blocks workloads.
 
 ## Prerequisites
 
@@ -91,7 +93,7 @@ chmod +x scripts/*.sh
 
 1. Starts Minikube if it is not running.
 2. Installs Argo CD into the `argocd` namespace.
-3. Installs kube-prometheus-stack (Prometheus and Grafana) into `monitoring`.
+3. Installs kube-prometheus-stack (Prometheus and Grafana) into `monitoring` with `charts/monitoring-values.yaml`.
 4. Installs Kyverno with `charts/kyverno-values.yaml` and waits for the admission controller.
 5. Applies the policies in `policies/`.
 6. Runs `scripts/scan-and-test.sh`.
@@ -139,16 +141,42 @@ kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80
 kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090
 ```
 
-Kyverno exposes policy metrics that Prometheus can scrape. Example queries (confirm exact names against your Kyverno version at `/metrics`):
+Kyverno exposes policy metrics, and the `ServiceMonitor` in `monitoring/` makes Prometheus scrape them. Verified query (Kyverno v1.19.1):
 
-```promql
+````promql
 sum by (policy_name, rule_result) (kyverno_policy_results_total)
-sum(rate(kyverno_admission_requests_total[5m]))
+````
+
+The `KyvernoPolicyViolations` alert fires when any policy records a failed result in the last 10 minutes. A Grafana dashboard, "Kyverno policy results", is provisioned from `monitoring/kyverno-dashboard.yaml`. Get the Grafana admin password with:
+
+````bash
+kubectl -n monitoring get secret monitoring-grafana -o jsonpath="{.data.admin-password}" | base64 -d
 ```
 
-Kyverno exposes native Prometheus metrics (such as policy results and admission request totals) which are scraped by the monitoring stack. You can visualize admission counts and policy enforcement rates in Grafana.
 
 
+## Observability screenshots
+
+Prometheus scraping Kyverno metrics:
+
+![Prometheus targets](docs/prometheus-targets.png)
+
+Alert firing on policy violations:
+
+![Prometheus alert](docs/prometheus-alert.png)
+
+Kyverno policy results in Grafana:
+
+![Grafana Kyverno](docs/grafana-kyverno.png)
+
+## Running on a small machine
+
+Verified on WSL2 with 3 CPUs and about 5 GB of RAM. Argo CD, Kyverno and Prometheus together can overload a node that small: health probes time out and pods restart in a loop. What worked:
+
+- Start Minikube with `MINIKUBE_CPUS=3 MINIKUBE_MEMORY=4096` and run `SKIP_MONITORING=1 ./scripts/run-all.sh` first.
+- Scale down the Argo CD components this lab does not use: `kubectl -n argocd scale deploy argocd-dex-server argocd-notifications-controller argocd-applicationset-controller --replicas=0`.
+- Install monitoring with `charts/monitoring-values.yaml` (no Alertmanager, no node-exporter, memory caps), and bring components up one at a time instead of all at once.
+- Kyverno's probes are relaxed in `charts/kyverno-values.yaml`, and every policy fails open, so a Kyverno restart does not block workloads.
 
 ## Cleanup
 
@@ -161,7 +189,8 @@ minikube delete
 - Local Minikube only. Argo CD manages `policies/`, not an application.
 - Kyverno and monitoring are installed by script, not by Argo CD.
 - The root-user policy only catches an explicit `runAsUser: 0`.
-- It uses `failurePolicy: Ignore` (fail-open) for low-resource Minikube.
+- All four policies use `failurePolicy: Ignore` (fail-open), so Kyverno restarts on a small machine never block workloads. Use `Fail` in production.
+- Verified on a 3-CPU, about 5 GB WSL2 machine, where Argo CD, Kyverno and Prometheus together overload the node. See Running on a small machine.
 - Trivy scans the compliant test pod and the policy, Argo CD and monitoring manifests; container images are not scanned.
 
 Next steps:

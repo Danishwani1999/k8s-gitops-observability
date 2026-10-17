@@ -93,9 +93,9 @@ graph TD
 
 ## The policy
 
-`disallow-root-user` (Enforce) blocks pods and containers that
-explicitly set `runAsUser: 0`. Pods that set no user at all are not
-caught by this rule. It uses `failurePolicy: Ignore`, so if the Kyverno
+`disallow-root-user` (Enforce) requires `runAsNonRoot: true` on the pod or on every container, so pods
+that set no user at all are rejected as well. The rule excludes system namespaces.
+It uses `failurePolicy: Ignore`, so if the Kyverno
 webhook is down, pods are admitted instead of blocked. That is a
 deliberate low-resource tradeoff for Minikube and should be `Fail` in
 production. The other three policies run in Audit mode and also use `failurePolicy: Ignore`, so a Kyverno outage never blocks workloads.
@@ -199,7 +199,6 @@ minikube delete
 
 - Local Minikube only. Argo CD manages `policies/`, not an application.
 - Kyverno and monitoring are installed by script, not by Argo CD.
-- The root-user policy only catches an explicit `runAsUser: 0`.
 - All four policies use `failurePolicy: Ignore` (fail-open), so Kyverno restarts on a small machine never block workloads. Use `Fail` in production.
 - Verified on a 3-CPU, about 5 GB WSL2 machine, where Argo CD, Kyverno and Prometheus together overload the node. See Running on a small machine.
 - Trivy scans the compliant test pod and the policy, Argo CD and monitoring manifests; container images are not scanned.
@@ -208,7 +207,8 @@ Next steps:
 
 - [ ] Deploy a sample app through Argo CD
 - [ ] Move Kyverno and monitoring into Argo CD Applications
-- [ ] Require `runAsNonRoot` and set `failurePolicy: Fail`
+- [x] Require `runAsNonRoot`
+- [ ] Set `failurePolicy: Fail` in production
 - [ ] Scan container images in CI
 
 ## Author

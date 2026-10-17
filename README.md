@@ -179,3 +179,18 @@ GitHub: [@Danishwani1999](https://github.com/Danishwani1999)
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Verified run
+
+Minikube (3 CPU, 4 GB), Kyverno chart 3.9.1 (Kyverno v1.19.1), Argo CD v2.13.3, 2026-10-17
+
+```text
+NAME                       SYNC STATUS   HEALTH STATUS
+k8s-gitops-observability   Synced        Healthy
+
+NAME                             ADMISSION   BACKGROUND   READY   AGE     MESSAGE
+disallow-latest-tag              true        true         True    2m56s   Ready
+disallow-privileged-containers   true        true         True    2m56s   Ready
+disallow-root-user               true        true         True    2m56s   Ready
+require-resource-limits          true        true         True    2m56s   Ready
+```

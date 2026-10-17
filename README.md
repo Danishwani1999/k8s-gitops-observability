@@ -194,3 +194,17 @@ disallow-privileged-containers   true        true         True    2m56s   Ready
 disallow-root-user               true        true         True    2m56s   Ready
 require-resource-limits          true        true         True    2m56s   Ready
 ```
+
+## Screenshots
+
+Argo CD synced and policies loaded:
+
+![Argo CD synced](docs/argocd-synced.png)
+
+Kyverno denies the root pod, admits the hardened pod:
+
+![Policy deny](docs/policy-deny.png)
+
+GitHub Actions CI:
+
+![CI green](docs/ci-green.png)

@@ -213,7 +213,7 @@ Next steps:
 
 ## Author
 
-**Danish Wani** · Fresher DevOps & Cloud Engineer
+**Danish Ahmad Wani** · Fresher DevOps & Cloud Engineer
 GitHub: [@Danishwani1999](https://github.com/Danishwani1999)
 
 ## License

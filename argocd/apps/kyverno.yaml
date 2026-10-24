@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kyverno
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+    - repoURL: https://kyverno.github.io/kyverno
+      chart: kyverno
+      targetRevision: 3.3.4             # keep equal to KYVERNO_CHART_VERSION in scripts/versions.env
+      helm:
+        releaseName: kyverno
+        valueFiles:
+          - $values/charts/kyverno-values.yaml
+    - repoURL: https://github.com/Danishwani1999/k8s-gitops-observability.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kyverno
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

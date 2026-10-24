@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: policies
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"   # after Kyverno CRDs and webhook exist
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Danishwani1999/k8s-gitops-observability.git
+    targetRevision: main
+    path: policies                      # ONLY policies/ - tests/ is never synced to the cluster
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  ignoreDifferences:
+    # Kyverno adds defaulted fields to ClusterPolicy objects, which would show as permanent drift.
+    - group: kyverno.io
+      kind: ClusterPolicy
+      jqPathExpressions:
+        - .spec.rules[]?.skipBackgroundRequests
+        - .spec.rules[]?.validate?.allowExistingViolations
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

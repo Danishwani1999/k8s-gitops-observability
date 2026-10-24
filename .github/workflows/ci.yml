@@ -1,63 +1,86 @@
-name: ci
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
 
+# NOTE: actions below use version tags. Pin each to a full commit SHA
+# (as you did in devsecops-pipeline) before publishing, e.g. with `pinact run`.
+
 jobs:
-  policy-tests:
+  static-checks:
+    name: Schema, Trivy and Kyverno unit tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install Kyverno CLI (pinned)
+
+      - name: Load pinned versions
+        run: cat scripts/versions.env >> "$GITHUB_ENV"
+
+      - name: Install kubeconform and Kyverno CLI
         run: |
-          curl -sSL -o kyverno.tgz https://github.com/kyverno/kyverno/releases/download/v1.10.0/kyverno-cli_v1.10.0_linux_x86_64.tar.gz
-          tar -xzf kyverno.tgz kyverno
-          sudo mv kyverno /usr/local/bin/
-          kyverno version
-      - name: Run Kyverno policy tests
+          curl -sSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | sudo tar xz -C /usr/local/bin kubeconform
+          curl -sSL "https://github.com/kyverno/kyverno/releases/download/${KYVERNO_CLI_VERSION}/kyverno-cli_${KYVERNO_CLI_VERSION}_linux_x86_64.tar.gz" \
+            | sudo tar xz -C /usr/local/bin kyverno
+
+      - name: Validate manifests against schemas
+        run: |
+          kubeconform -strict -summary -ignore-missing-schemas \
+            -ignore-filename-pattern 'kyverno-test.yaml' \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            policies argocd tests
+
+      - name: Trivy misconfiguration scan (all manifests)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          skip-files: tests/fail-root-pod.yaml   # deliberately insecure test fixture
+
+      - name: Kyverno policy unit tests (offline)
         run: kyverno test tests/
 
-  manifest-scan:
+  e2e-kind:
+    name: Live admission test on kind
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    needs: static-checks
     steps:
       - uses: actions/checkout@v4
-      - name: Install Trivy (pinned script and version)
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.75.0/contrib/install.sh | sudo sh -s -- -b /usr/local/bin v0.75.0
-          trivy --version
-      - name: Trivy scan of the compliant test pod
-        run: trivy config --severity HIGH,CRITICAL --exit-code 1 tests/pass-non-root-pod.yaml
-      - name: Trivy scan of policies, Argo CD and monitoring manifests
-        run: |
-          for d in policies argocd monitoring; do
-            trivy config --severity HIGH,CRITICAL --exit-code 1 "$d"
-          done
 
-  manifest-validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install kubeconform (pinned)
-        run: |
-          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz | tar -xz kubeconform
-          sudo mv kubeconform /usr/local/bin/
-      - name: Validate manifests
-        run: kubeconform -strict -ignore-missing-schemas -summary tests/pass-non-root-pod.yaml tests/fail-root-pod.yaml policies argocd monitoring
+      - name: Load pinned versions
+        run: cat scripts/versions.env >> "$GITHUB_ENV"
 
-  argocd-app-check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-      - run: pip install pyyaml
-      - name: Argo CD Application is valid and its path exists
-        run: python3 scripts/check-argocd-app.py
+      - uses: helm/kind-action@v1
+
+      - uses: azure/setup-helm@v4
+
+      - name: Install Kyverno (pinned chart)
+        run: |
+          helm repo add kyverno https://kyverno.github.io/kyverno
+          helm repo update
+          # ServiceMonitor CRDs do not exist on a bare kind cluster, so disable them here only.
+          helm install kyverno kyverno/kyverno \
+            --version "${KYVERNO_CHART_VERSION}" \
+            --namespace kyverno --create-namespace \
+            -f charts/kyverno-values.yaml \
+            --set admissionController.serviceMonitor.enabled=false \
+            --set backgroundController.serviceMonitor.enabled=false \
+            --set cleanupController.serviceMonitor.enabled=false \
+            --set reportsController.serviceMonitor.enabled=false \
+            --wait --timeout 5m
+
+      - name: Apply policy and wait until it is Ready
+        run: |
+          kubectl apply -f policies/
+          kubectl wait --for=condition=Ready clusterpolicy/disallow-root-user --timeout=120s
+
+      - name: Live deny/allow test
+        run: ./scripts/live-test.sh

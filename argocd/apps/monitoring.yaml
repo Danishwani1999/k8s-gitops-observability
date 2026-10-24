@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"   # first: provides the ServiceMonitor CRD Kyverno needs
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 67.4.0            # keep equal to KPS_CHART_VERSION in scripts/versions.env
+      helm:
+        releaseName: monitoring
+        valueFiles:
+          - $values/charts/kube-prometheus-stack-values.yaml
+    - repoURL: https://github.com/Danishwani1999/k8s-gitops-observability.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true            # kube-prometheus-stack CRDs exceed the client-side annotation limit
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

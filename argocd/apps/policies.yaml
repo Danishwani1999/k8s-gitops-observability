@@ -29,7 +29,7 @@ spec:
       - SkipDryRunOnMissingResource=true
       - RespectIgnoreDifferences=true
     retry:
-      limit: 5
+      limit: -1
       backoff:
         duration: 10s
         factor: 2

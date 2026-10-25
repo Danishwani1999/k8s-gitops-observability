@@ -1,0 +1,1 @@
+serviceMonitor/kyverno/kyverno-admission-controller/0 up

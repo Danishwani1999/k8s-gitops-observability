@@ -1,0 +1,68 @@
+{
+    "status": "success",
+    "data": {
+        "resultType": "vector",
+        "result": [
+            {
+                "metric": {
+                    "policy_name": "disallow-latest-tag",
+                    "rule_result": "pass"
+                },
+                "value": [
+                    1792944047.695,
+                    "8"
+                ]
+            },
+            {
+                "metric": {
+                    "policy_name": "disallow-privileged-containers",
+                    "rule_result": "pass"
+                },
+                "value": [
+                    1792944047.695,
+                    "4"
+                ]
+            },
+            {
+                "metric": {
+                    "policy_name": "disallow-root-user",
+                    "rule_result": "fail"
+                },
+                "value": [
+                    1792944047.695,
+                    "2"
+                ]
+            },
+            {
+                "metric": {
+                    "policy_name": "disallow-root-user",
+                    "rule_result": "pass"
+                },
+                "value": [
+                    1792944047.695,
+                    "1"
+                ]
+            },
+            {
+                "metric": {
+                    "policy_name": "require-resource-limits",
+                    "rule_result": "fail"
+                },
+                "value": [
+                    1792944047.695,
+                    "2"
+                ]
+            },
+            {
+                "metric": {
+                    "policy_name": "require-resource-limits",
+                    "rule_result": "pass"
+                },
+                "value": [
+                    1792944047.695,
+                    "2"
+                ]
+            }
+        ]
+    }
+}

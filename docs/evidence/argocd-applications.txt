@@ -1,0 +1,6 @@
+NAME         SYNC STATUS   HEALTH STATUS   REVISION                                   PROJECT
+dashboards   Synced        Healthy         fd16d70ea629a88e7a56c7c1cc3c2555573087b3   default
+kyverno      Synced        Healthy                                                    default
+monitoring   Synced        Healthy                                                    default
+policies     Synced        Healthy         fd16d70ea629a88e7a56c7c1cc3c2555573087b3   default
+root         OutOfSync     Healthy         fd16d70ea629a88e7a56c7c1cc3c2555573087b3   default

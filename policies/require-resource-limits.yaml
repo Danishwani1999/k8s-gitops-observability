@@ -5,7 +5,7 @@ metadata:
 spec:
   failurePolicy: Ignore
   validationFailureAction: Audit
-  background: true
+  background: false
   rules:
   - name: validate-resources
     match:

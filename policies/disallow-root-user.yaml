@@ -13,7 +13,7 @@ metadata:
       cannot break the cluster components that this repo installs.
 spec:
   validationFailureAction: Enforce
-  background: true
+  background: false
   rules:
     - name: check-runAsNonRoot
       match:

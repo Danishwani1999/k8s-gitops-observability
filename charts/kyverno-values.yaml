@@ -76,3 +76,10 @@ reportsController:
     periodSeconds: 30
     timeoutSeconds: 15
     failureThreshold: 10
+
+backgroundController:
+  enabled: false
+reportsController:
+  enabled: false
+cleanupController:
+  enabled: false

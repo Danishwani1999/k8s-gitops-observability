@@ -1,5 +1,5 @@
 admissionController:
-  replicas: 1          # single-node Minikube lab; use 3 in a real cluster
+  replicas: 1
   serviceMonitor:
     enabled: true
 backgroundController:
@@ -11,3 +11,15 @@ cleanupController:
 reportsController:
   serviceMonitor:
     enabled: true
+
+config:
+  webhooks:
+    - namespaceSelector:
+        matchExpressions:
+          - key: kubernetes.io/metadata.name
+            operator: NotIn
+            values:
+              - kube-system
+              - kyverno
+              - argocd
+              - monitoring

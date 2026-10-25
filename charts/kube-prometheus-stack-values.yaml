@@ -1,25 +1,57 @@
 alertmanager:
-  enabled: false        # not used in this lab; saves Minikube memory
+  enabled: false
+
+defaultRules:
+  create: false
+
+nodeExporter:
+  enabled: false
+kubeStateMetrics:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+coreDns:
+  enabled: false
+kubeApiServer:
+  enabled: false
+kubelet:
+  enabled: false
 
 grafana:
-  # Lab only. In real use take the admin password from a Secret
-  # (grafana.admin.existingSecret) instead of the chart default.
   sidecar:
     dashboards:
       enabled: true
       label: grafana_dashboard
       labelValue: "1"
-      searchNamespace: ALL   # picks up ConfigMaps from any namespace
+      searchNamespace: ALL
+  resources:
+    requests:
+      memory: 100Mi
+    limits:
+      memory: 250Mi
+
+prometheusOperator:
+  resources:
+    requests:
+      memory: 50Mi
+    limits:
+      memory: 150Mi
 
 prometheus:
   prometheusSpec:
-    # Without these, Prometheus only scrapes ServiceMonitors that carry the
-    # Helm release label - it would silently ignore Kyverno's ServiceMonitors.
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
-    retention: 24h
+    retention: 6h
     resources:
       requests:
-        cpu: 200m
-        memory: 400Mi
+        cpu: 100m
+        memory: 200Mi
+      limits:
+        memory: 600Mi

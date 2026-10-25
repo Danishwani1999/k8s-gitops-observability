@@ -2,24 +2,77 @@ admissionController:
   replicas: 1
   serviceMonitor:
     enabled: true
+  startupProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    failureThreshold: 30
+    periodSeconds: 10
+    timeoutSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 10
+  readinessProbe:
+    httpGet:
+      path: /health/readiness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    timeoutSeconds: 15
+    failureThreshold: 10
+
 backgroundController:
   serviceMonitor:
     enabled: true
+  livenessProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 10
+
 cleanupController:
   serviceMonitor:
     enabled: true
+  livenessProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 10
+  readinessProbe:
+    httpGet:
+      path: /health/readiness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 10
+    periodSeconds: 15
+    timeoutSeconds: 15
+    failureThreshold: 10
+
 reportsController:
   serviceMonitor:
     enabled: true
-
-config:
-  webhooks:
-    - namespaceSelector:
-        matchExpressions:
-          - key: kubernetes.io/metadata.name
-            operator: NotIn
-            values:
-              - kube-system
-              - kyverno
-              - argocd
-              - monitoring
+  livenessProbe:
+    httpGet:
+      path: /health/liveness
+      port: 9443
+      scheme: HTTPS
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 15
+    failureThreshold: 10

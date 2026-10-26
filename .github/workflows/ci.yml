@@ -83,7 +83,17 @@ jobs:
 
       - name: Apply policy and wait until it is Ready
         run: |
-          kubectl apply -f policies/
+          kubectl -n kyverno rollout status deployment/kyverno-admission-controller --timeout=300s
+          for i in $(seq 1 30); do
+            ep=$(kubectl -n kyverno get endpoints kyverno-svc -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null)
+            [ -n "$ep" ] && break
+            echo "waiting for kyverno-svc endpoints ($i/30)"; sleep 5
+          done
+          for i in $(seq 1 10); do
+            if kubectl apply -f policies/; then ok=1; break; fi
+            echo "webhook not ready, retrying ($i/10)"; sleep 10
+          done
+          [ "${ok:-0}" = "1" ] || { echo "policies could not be applied"; exit 1; }
           kubectl wait --for=condition=Ready clusterpolicy/disallow-root-user --timeout=120s
 
       - name: Live deny/allow test

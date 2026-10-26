@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Load pinned versions
-        run: cat scripts/versions.env >> "$GITHUB_ENV"
+        run: grep -E "^[A-Z_]+=" scripts/versions.env >> "$GITHUB_ENV"
 
       - name: Install kubeconform and Kyverno CLI
         run: |
@@ -36,14 +36,18 @@ jobs:
             -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             policies argocd tests
 
+      - name: Install Trivy
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.75.0
+          trivy --version
+
       - name: Trivy misconfiguration scan (all manifests)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: config
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          exit-code: "1"
-          skip-files: tests/fail-root-pod.yaml   # deliberately insecure test fixture
+        run: |
+          trivy config . \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --skip-files tests/fail-root-pod.yaml
 
       - name: Kyverno policy unit tests (offline)
         run: kyverno test tests/
@@ -56,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Load pinned versions
-        run: cat scripts/versions.env >> "$GITHUB_ENV"
+        run: grep -E "^[A-Z_]+=" scripts/versions.env >> "$GITHUB_ENV"
 
       - uses: helm/kind-action@v1
 

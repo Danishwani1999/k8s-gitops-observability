@@ -8,15 +8,12 @@ on:
 permissions:
   contents: read
 
-# NOTE: actions below use version tags. Pin each to a full commit SHA
-# (as you did in devsecops-pipeline) before publishing, e.g. with `pinact run`.
-
 jobs:
   static-checks:
     name: Schema, Trivy and Kyverno unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Load pinned versions
         run: grep -E "^[A-Z_]+=" scripts/versions.env >> "$GITHUB_ENV"
@@ -36,10 +33,17 @@ jobs:
             -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
             policies argocd tests
 
-      - name: Install Trivy
+      - name: Install Trivy (pinned release, checksum verified)
+        env:
+          TRIVY_VERSION: 0.75.0
+          # sha256 of trivy_0.75.0_Linux-64bit.tar.gz from the release's checksums file
+          TRIVY_SHA256: c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f
         run: |
-          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin v0.75.0
+          curl -sSfL -o trivy.tgz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tgz" | sha256sum -c -
+          sudo tar xzf trivy.tgz -C /usr/local/bin trivy
+          rm trivy.tgz
           trivy --version
 
       - name: Trivy misconfiguration scan (all manifests)
@@ -57,14 +61,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: static-checks
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Load pinned versions
         run: grep -E "^[A-Z_]+=" scripts/versions.env >> "$GITHUB_ENV"
 
-      - uses: helm/kind-action@v1
+      - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
 
       - name: Install Kyverno (pinned chart)
         run: |

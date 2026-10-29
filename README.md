@@ -127,7 +127,6 @@ compliance score, because Audit-mode failures are included.
 - Grafana uses the chart's admin credentials (lab only); Alertmanager is disabled.
 - Argo CD server-side diff is a workaround for the Kubernetes 1.35 / Argo CD 2.13 mismatch; upgrading
   Argo CD or using an older Kubernetes removes the need for it.
-- CI actions use version tags; pin to commit SHAs for supply-chain hardening.
 
 ## Author
 
